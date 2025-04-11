@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class GPT100k(nn.Module):
-    def __init__(self, vocab_size=96, context_size=64, d_model=32, n_layers=2, n_heads=2):
+class GPT77k(nn.Module):
+    def __init__(self, vocab_size=96, context_size=64, d_model=64, n_layers=2, n_heads=4):
         super().__init__()
         self.token_embedding = nn.Embedding(vocab_size, d_model)
         self.position_embedding = nn.Parameter(torch.randn(context_size, d_model))
@@ -13,8 +13,7 @@ class GPT100k(nn.Module):
         ])
 
         self.ln_f = nn.LayerNorm(d_model)
-        self.output_proj = nn.Linear(d_model, vocab_size, bias=False)
-        self.output_proj.weight = self.token_embedding.weight  # tie weights
+        # Removed output_proj here
 
     def forward(self, idx):
         B, T = idx.shape
@@ -24,7 +23,7 @@ class GPT100k(nn.Module):
             x = layer(x)
 
         x = self.ln_f(x)
-        logits = self.output_proj(x)
+        logits = F.linear(x, self.token_embedding.weight)  # clean tie, no extra weights
         return logits
 
 class TransformerBlock(nn.Module):
@@ -51,3 +50,10 @@ class TransformerBlock(nn.Module):
 
         x = x + self.ffn(self.ln2(x))  # another residual
         return x
+    
+if __name__ == "__main__":
+    model = GPT77k()
+    total = sum(p.numel() for p in model.parameters())
+    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print(f"✅ Total parameters: {total}")
+    print(f"🧠 Trainable parameters: {trainable}")

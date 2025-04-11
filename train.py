@@ -1,13 +1,13 @@
 import torch
 import torch.nn.functional as F
-from model import GPT100k  # <-- make sure your new model is saved as GPT100k
+from model import GPT77k  
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Model config (match with your model.py)
 vocab_size = 96
 context_size = 64  # upgraded context size
-model = GPT100k(vocab_size=vocab_size, context_size=context_size, d_model=32, n_layers=2, n_heads=2).to(device)
+model = GPT77k(vocab_size=vocab_size, context_size=context_size, d_model=64, n_layers=2, n_heads=4).to(device)
 
 # Load data and encode to ASCII tokens
 with open("data.txt", "r", encoding="utf-8") as f:
@@ -42,5 +42,5 @@ for step in range(200):
     if step % 10 == 0:
         print(f"Step {step}: loss = {loss.item():.4f}")
 
-torch.save(model.state_dict(), "gpt100k.pt")
-print("✅ Model saved to gpt100k.pt")
+torch.save(model.state_dict(), "gpt77k.pt")
+print("✅ Model saved to gpt77k.pt")

@@ -1,4 +1,4 @@
-# 🧠 TinyGPT: 100k-Parameter GPT Model
+# 🧠 TinyGPT: 77k-Parameter GPT Model
 
 Make sure you have a data.txt to train from in the root of the project
 

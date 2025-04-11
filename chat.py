@@ -1,5 +1,5 @@
 import torch
-from model import GPT100k  # Use your upgraded 100k-param model
+from model import GPT77k  # Use your upgraded 77k-param model
 
 def count_parameters(model):
     total = sum(p.numel() for p in model.parameters())
@@ -11,8 +11,15 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # Model config (must match training!)
 vocab_size = 96
 context_size = 64
-model = GPT100k(vocab_size=vocab_size, context_size=context_size, d_model=32, n_layers=2, n_heads=2).to(device)
-model.load_state_dict(torch.load("gpt100k.pt"))
+model = GPT77k(
+    vocab_size=vocab_size,
+    context_size=context_size,
+    d_model=64,      
+    n_layers=2,
+    n_heads=4
+).to(device)
+
+model.load_state_dict(torch.load("gpt77k.pt"))
 model.eval()
 
 total, trainable = count_parameters(model)
@@ -26,7 +33,7 @@ def encode(text):
 def decode(indices):
     return ''.join(chr(i + 32) for i in indices)
 
-print(f"\n🤖 Welcome to GPT-100k! Type an ASCII prompt, and it will complete it with 100 generated characters.")
+print(f"\n🤖 Welcome to GPT-77k! Type an ASCII prompt, and it will complete it with 100 generated characters.")
 print("Type 'exit' to quit.\n")
 
 while True:
@@ -63,4 +70,4 @@ while True:
         context = context[1:] + [next_token]  # Slide window
 
     output = decode(generated)
-    print(f"🤖 GPT-100k says:\n{output}\n")
+    print(f"🤖 GPT-77k says:\n{output}\n")
