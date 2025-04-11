@@ -1,6 +1,6 @@
-# 🧠 TinyGPT: 7-Parameter GPT Model
+# 🧠 TinyGPT: 4272-Parameter GPT Model
 
-This is a deliberately minimal GPT-style transformer with **only 7 trainable parameters**.
+This is a deliberately minimal GPT-style transformer with **only 4272 trainable parameters**.
 
 Why? Because we can.
 
@@ -8,9 +8,7 @@ Make sure you have a data.txt to train from in the root of the project
 
 ## Architecture
 
-- 1-dim token embedding (2 vocab tokens)
-- 1 position embedding
-- Linear output projection
+dunno lol copypaste to chatgpt and ask
 
 ## Usage
 
