@@ -1,24 +1,23 @@
 import torch
-from model import TinyGPT10k
+from model import GPT100k  # Use your upgraded 100k-param model
 
 def count_parameters(model):
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     return total, trainable
 
-
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 # Model config (must match training!)
 vocab_size = 96
-context_size = 32
-model = TinyGPT10k(vocab_size=vocab_size, context_size=context_size, d_model=16).to(device)
-model.load_state_dict(torch.load("tinygpt10k.pt"))
+context_size = 64
+model = GPT100k(vocab_size=vocab_size, context_size=context_size, d_model=32, n_layers=2, n_heads=2).to(device)
+model.load_state_dict(torch.load("gpt100k.pt"))
 model.eval()
 
 total, trainable = count_parameters(model)
-print(f"Total parameters: {total}")
-print(f"Trainable parameters: {trainable}")
+print(f"📊 Total parameters: {total}")
+print(f"📦 Trainable parameters: {trainable}")
 
 # Encoding and decoding
 def encode(text):
@@ -27,7 +26,7 @@ def encode(text):
 def decode(indices):
     return ''.join(chr(i + 32) for i in indices)
 
-print(f"🤖 Welcome to TinyGPT-10k! Type an ASCII prompt. Model will respond with 100 characters.")
+print(f"\n🤖 Welcome to GPT-100k! Type an ASCII prompt, and it will complete it with 100 generated characters.")
 print("Type 'exit' to quit.\n")
 
 while True:
@@ -55,13 +54,13 @@ while True:
     for _ in range(100):
         x = torch.tensor([context], dtype=torch.long).to(device)
         with torch.no_grad():
-            logits = model(x)
-            temperature = 1.0  # try values from 0.7 to 1.3
+            logits = model(x)  # [1, T, vocab_size]
+            temperature = 1.0  # try 0.7–1.3 for creativity
             probs = torch.softmax(logits[:, -1, :] / temperature, dim=-1)
-            next_token = torch.multinomial(probs, num_samples=1).item() # Sample from the distribution
+            next_token = torch.multinomial(probs, num_samples=1).item()
 
         generated.append(next_token)
-        context = context[1:] + [next_token]  # Slide window forward
+        context = context[1:] + [next_token]  # Slide window
 
     output = decode(generated)
-    print(f"🤖 TinyGPT-10k says:\n{output}\n")
+    print(f"🤖 GPT-100k says:\n{output}\n")

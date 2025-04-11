@@ -2,22 +2,36 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class TinyGPT10k(nn.Module):
-    def __init__(self, vocab_size=96, context_size=32, d_model=16):
+class GPT100k(nn.Module):
+    def __init__(self, vocab_size=96, context_size=64, d_model=32, n_layers=2, n_heads=2):
         super().__init__()
-        self.vocab_size = vocab_size
-        self.context_size = context_size
-        self.d_model = d_model
-
-        # Token and Position Embeddings
         self.token_embedding = nn.Embedding(vocab_size, d_model)
         self.position_embedding = nn.Parameter(torch.randn(context_size, d_model))
 
-        # Self-Attention (built-in, single-head)
-        self.ln1 = nn.LayerNorm(d_model)
-        self.attn = nn.MultiheadAttention(embed_dim=d_model, num_heads=1, batch_first=True)
+        self.layers = nn.ModuleList([
+            TransformerBlock(d_model, n_heads) for _ in range(n_layers)
+        ])
 
-        # Feedforward
+        self.ln_f = nn.LayerNorm(d_model)
+        self.output_proj = nn.Linear(d_model, vocab_size, bias=False)
+        self.output_proj.weight = self.token_embedding.weight  # tie weights
+
+    def forward(self, idx):
+        B, T = idx.shape
+        x = self.token_embedding(idx) + self.position_embedding[:T]
+
+        for layer in self.layers:
+            x = layer(x)
+
+        x = self.ln_f(x)
+        logits = self.output_proj(x)
+        return logits
+
+class TransformerBlock(nn.Module):
+    def __init__(self, d_model, n_heads):
+        super().__init__()
+        self.ln1 = nn.LayerNorm(d_model)
+        self.attn = nn.MultiheadAttention(d_model, n_heads, batch_first=True)
         self.ln2 = nn.LayerNorm(d_model)
         self.ffn = nn.Sequential(
             nn.Linear(d_model, d_model * 2),
@@ -25,26 +39,15 @@ class TinyGPT10k(nn.Module):
             nn.Linear(d_model * 2, d_model),
         )
 
-        # Output projection
-        self.output_proj = nn.Linear(d_model, vocab_size, bias=False)
+    def forward(self, x):
+        T = x.size(1)
+        attn_mask = torch.tril(torch.ones(T, T, device=x.device)).bool()
+        attn_mask = ~attn_mask  # MHA expects True = masked
 
-        # Optional: Tie output projection weights to token embedding
-        self.output_proj.weight = self.token_embedding.weight
-
-    def forward(self, idx):
-        B, T = idx.shape
-        tok_emb = self.token_embedding(idx)                         # [B, T, d_model]
-        pos_emb = self.position_embedding[:T]                       # [T, d_model]
-        x = tok_emb + pos_emb                                       # [B, T, d_model]
-
+        x_res = x
         x = self.ln1(x)
+        x, _ = self.attn(x, x, x, attn_mask=attn_mask)
+        x = x_res + x  # residual
 
-        # Causal attention mask
-        attn_mask = torch.tril(torch.ones(T, T, device=idx.device)).bool()
-        attn_mask = ~attn_mask  # MHA expects True for masked positions
-
-        x, _ = self.attn(x, x, x, attn_mask=attn_mask)              # [B, T, d_model]
-        x = self.ln2(x)
-        x = x + self.ffn(x)                                         # Residual connection
-        logits = self.output_proj(x)                                # [B, T, vocab_size]
-        return logits
+        x = x + self.ffn(self.ln2(x))  # another residual
+        return x
