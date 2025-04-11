@@ -4,6 +4,8 @@ This is a deliberately minimal GPT-style transformer with **only 7 trainable par
 
 Why? Because we can.
 
+Make sure you have a data.txt to train from in the root of the project
+
 ## Architecture
 
 - 1-dim token embedding (2 vocab tokens)
