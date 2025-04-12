@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class GPT77k(nn.Module):
+class GPT558k(nn.Module):
     def __init__(self, vocab_size=96, context_size=128, d_model=128, n_layers=4, n_heads=4):
         super().__init__()
         self.token_embedding = nn.Embedding(vocab_size, d_model)
@@ -53,7 +53,7 @@ class TransformerBlock(nn.Module):
         return x
 
 if __name__ == "__main__":
-    model = GPT77k()
+    model = GPT558k()
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"✅ Total parameters: {total:,}")

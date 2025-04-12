@@ -1,7 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
-from model import GPT77k
+from model import GPT558k
 import json
 
 # ─────────────────────────────────────────────
@@ -17,7 +17,7 @@ else:
 VOCAB_SIZE = 96  # ASCII printable characters (32–127)
 CONTEXT_SIZE = 128
 
-model = GPT77k(
+model = GPT558k(
     vocab_size=VOCAB_SIZE,
     context_size=CONTEXT_SIZE,
     d_model=128,
@@ -60,8 +60,8 @@ best_loss = float('inf')
 SAVE_DELTA = 0.01
 LOSS_THRESHOLD = 0.0
 MAX_STEPS = 1000
-MODEL_PATH = "gpt77k.pt"
-META_PATH = "gpt77k-meta.json"
+MODEL_PATH = "gpt558k.pt"
+META_PATH = "gpt558k-meta.json"
 
 print("🧪 Starting training...")
 for step in range(MAX_STEPS):

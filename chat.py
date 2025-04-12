@@ -1,5 +1,5 @@
 import torch
-from model import GPT77k
+from model import GPT558k
 
 # Standard ASCII vocab (printable characters 32 to 127)
 VOCAB_SIZE = 96
@@ -7,8 +7,8 @@ CONTEXT_SIZE = 128  # match the scaled model
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-# Load the larger GPT77k model
-model = GPT77k(
+# Load the larger GPT558k model
+model = GPT558k(
     vocab_size=VOCAB_SIZE,
     context_size=CONTEXT_SIZE,
     d_model=128,
@@ -16,7 +16,7 @@ model = GPT77k(
     n_heads=4
 ).to(device)
 
-model.load_state_dict(torch.load("gpt77k.pt", map_location=device))
+model.load_state_dict(torch.load("gpt558k.pt", map_location=device))
 model.eval()
 
 # Debug param count
@@ -36,7 +36,7 @@ def encode(text):
 def decode(indices):
     return ''.join(chr(i + 32) for i in indices)
 
-print("\n🤖 GPT-77k (1M params) is ready! Type any ASCII prompt.")
+print("\n🤖 GPT-558k is ready! Type any ASCII prompt.")
 print("Type 'exit' to quit.\n")
 
 while True:
@@ -73,4 +73,4 @@ while True:
             break
 
     output = decode(generated)
-    print(f"🤖 GPT-77k says: {output}\n")
+    print(f"🤖 GPT-558k says: {output}\n")
