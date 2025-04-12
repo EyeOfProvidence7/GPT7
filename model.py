@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class GPT77k(nn.Module):
-    def __init__(self, vocab_size=96, context_size=64, d_model=64, n_layers=2, n_heads=4):
+    def __init__(self, vocab_size=96, context_size=128, d_model=128, n_layers=4, n_heads=4):
         super().__init__()
         self.token_embedding = nn.Embedding(vocab_size, d_model)
         self.position_embedding = nn.Parameter(torch.randn(context_size, d_model))
@@ -13,7 +13,8 @@ class GPT77k(nn.Module):
         ])
 
         self.ln_f = nn.LayerNorm(d_model)
-        # Removed output_proj here
+        # Output projection tied to token embedding
+        # So we re-use embedding weight in F.linear
 
     def forward(self, idx):
         B, T = idx.shape
@@ -23,7 +24,7 @@ class GPT77k(nn.Module):
             x = layer(x)
 
         x = self.ln_f(x)
-        logits = F.linear(x, self.token_embedding.weight)  # clean tie, no extra weights
+        logits = F.linear(x, self.token_embedding.weight)  # weight tying
         return logits
 
 class TransformerBlock(nn.Module):
@@ -41,7 +42,7 @@ class TransformerBlock(nn.Module):
     def forward(self, x):
         T = x.size(1)
         attn_mask = torch.tril(torch.ones(T, T, device=x.device)).bool()
-        attn_mask = ~attn_mask  # MHA expects True = masked
+        attn_mask = ~attn_mask  # True means mask
 
         x_res = x
         x = self.ln1(x)
@@ -50,10 +51,10 @@ class TransformerBlock(nn.Module):
 
         x = x + self.ffn(self.ln2(x))  # another residual
         return x
-    
+
 if __name__ == "__main__":
     model = GPT77k()
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(f"✅ Total parameters: {total}")
-    print(f"🧠 Trainable parameters: {trainable}")
+    print(f"✅ Total parameters: {total:,}")
+    print(f"🧠 Trainable parameters: {trainable:,}")

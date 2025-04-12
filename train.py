@@ -14,13 +14,16 @@ else:
 
 # ─────────────────────────────────────────────
 # 🧠 Model config
-CUSTOM_VOCAB = ['0', '1', '+', '=']
-CHAR_TO_INDEX = {c: i for i, c in enumerate(CUSTOM_VOCAB)}
-INDEX_TO_CHAR = {i: c for c, i in CHAR_TO_INDEX.items()}
-vocab_size = len(CUSTOM_VOCAB)
+VOCAB_SIZE = 96  # ASCII printable characters (32–127)
+CONTEXT_SIZE = 128
 
-context_size = 64
-model = GPT77k(vocab_size=vocab_size, context_size=context_size, d_model=64, n_layers=2, n_heads=4).to(device)
+model = GPT77k(
+    vocab_size=VOCAB_SIZE,
+    context_size=CONTEXT_SIZE,
+    d_model=128,
+    n_layers=4,
+    n_heads=4
+).to(device)
 
 # ─────────────────────────────────────────────
 # 📚 Load and encode data
@@ -28,34 +31,34 @@ with open("data.txt", "r", encoding="utf-8") as f:
     raw_text = f.read()
 
 def encode(text):
-    return [CHAR_TO_INDEX[c] for c in text if c in CHAR_TO_INDEX]
+    return [ord(c) - 32 for c in text if 32 <= ord(c) < 128]
 
 tokens = encode(raw_text)
 
 # 🔄 Create input-output sequences
 X, Y = [], []
-for i in range(len(tokens) - context_size):
-    X.append(tokens[i:i + context_size])
-    Y.append(tokens[i + 1:i + context_size + 1])
+for i in range(len(tokens) - CONTEXT_SIZE):
+    X.append(tokens[i:i + CONTEXT_SIZE])
+    Y.append(tokens[i + 1:i + CONTEXT_SIZE + 1])
 
 X = torch.tensor(X, dtype=torch.long)
 Y = torch.tensor(Y, dtype=torch.long)
 
 # ─────────────────────────────────────────────
-# 🧺 Batch & shuffle with DataLoader
-BATCH_SIZE = 32
+# 🧺 DataLoader
+BATCH_SIZE = min(512, len(X))  # auto-adjust if dataset is small
 dataset = TensorDataset(X, Y)
-loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True)
+loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True)
 
 # ─────────────────────────────────────────────
 # 🚀 Optimizer
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
 
 # ─────────────────────────────────────────────
-# 🧠 Training loop with epoch loss + save logic
+# 🧠 Training loop with save
 best_loss = float('inf')
 SAVE_DELTA = 0.01
-LOSS_THRESHOLD = 0.2
+LOSS_THRESHOLD = 0.0
 MAX_STEPS = 1000
 MODEL_PATH = "gpt77k.pt"
 META_PATH = "gpt77k-meta.json"
@@ -71,7 +74,7 @@ for step in range(MAX_STEPS):
         batch_y = batch_y.to(device)
 
         logits = model(batch_x)
-        loss = F.cross_entropy(logits.view(-1, vocab_size), batch_y.view(-1))
+        loss = F.cross_entropy(logits.view(-1, VOCAB_SIZE), batch_y.view(-1))
 
         optimizer.zero_grad()
         loss.backward()
@@ -81,7 +84,6 @@ for step in range(MAX_STEPS):
         num_batches += 1
 
     epoch_loss = total_loss / num_batches
-
     print(f"Step {step}: loss = {epoch_loss:.4f}")
 
     if epoch_loss < best_loss - SAVE_DELTA:
