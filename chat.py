@@ -1,45 +1,43 @@
 import torch
-from model import GPT77k  # Use your upgraded 77k-param model
+from model import GPT77k
 
+# Define custom vocab
+CUSTOM_VOCAB = ['0', '1', '+', '=']
+CHAR_TO_INDEX = {c: i for i, c in enumerate(CUSTOM_VOCAB)}
+INDEX_TO_CHAR = {i: c for c, i in CHAR_TO_INDEX.items()}
+VOCAB_SIZE = len(CUSTOM_VOCAB)
+CONTEXT_SIZE = 64
+
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+# Load model
+model = GPT77k(vocab_size=VOCAB_SIZE, context_size=CONTEXT_SIZE, d_model=64, n_layers=2, n_heads=4).to(device)
+model.load_state_dict(torch.load("gpt77k.pt"))
+model.eval()
+
+# Debug param count
 def count_parameters(model):
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     return total, trainable
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-# Model config (must match training!)
-vocab_size = 96
-context_size = 64
-model = GPT77k(
-    vocab_size=vocab_size,
-    context_size=context_size,
-    d_model=64,      
-    n_layers=2,
-    n_heads=4
-).to(device)
-
-model.load_state_dict(torch.load("gpt77k.pt"))
-model.eval()
-
 total, trainable = count_parameters(model)
 print(f"📊 Total parameters: {total}")
 print(f"📦 Trainable parameters: {trainable}")
 
-# Encoding and decoding
+# Encoding/decoding for 4-token vocab
 def encode(text):
-    return [ord(c) - 32 for c in text if 32 <= ord(c) < 128]
+    return [CHAR_TO_INDEX[c] for c in text if c in CHAR_TO_INDEX]
 
 def decode(indices):
-    return ''.join(chr(i + 32) for i in indices)
+    return ''.join(INDEX_TO_CHAR[i] for i in indices)
 
-print(f"\n🤖 Welcome to GPT-77k! Type an ASCII prompt, and it will complete it with 100 generated characters.")
+print("\n🤖 GPT-77k is ready to compute binary string addition!")
 print("Type 'exit' to quit.\n")
 
 while True:
-    user_input = input("🧠 You: ")
-
-    if user_input.strip().lower() == "exit":
+    user_input = input("🧠 You: ").strip()
+    if user_input.lower() == "exit":
         break
 
     try:
@@ -47,27 +45,29 @@ while True:
         if not tokens:
             raise ValueError
     except ValueError:
-        print("⚠️ Please enter printable ASCII characters.\n")
+        print("⚠️ Please enter only characters: 0, 1, +, =\n")
         continue
 
-    # Truncate or pad to context size
-    if len(tokens) < context_size:
-        context = [0] * (context_size - len(tokens)) + tokens
+    # Pad context
+    if len(tokens) < CONTEXT_SIZE:
+        context = [0] * (CONTEXT_SIZE - len(tokens)) + tokens
     else:
-        context = tokens[-context_size:]
+        context = tokens[-CONTEXT_SIZE:]
 
     generated = []
-
-    for _ in range(100):
+    for _ in range(10):  # up to 10 binary digits
         x = torch.tensor([context], dtype=torch.long).to(device)
         with torch.no_grad():
-            logits = model(x)  # [1, T, vocab_size]
-            temperature = 1.0  # try 0.7–1.3 for creativity
-            probs = torch.softmax(logits[:, -1, :] / temperature, dim=-1)
+            logits = model(x)
+            probs = torch.softmax(logits[:, -1, :], dim=-1)
             next_token = torch.multinomial(probs, num_samples=1).item()
 
         generated.append(next_token)
-        context = context[1:] + [next_token]  # Slide window
+        context = context[1:] + [next_token]
+
+        # stop generation once we see a token that wouldn't occur in a result (optional)
+        if len(generated) > 2 and next_token in [2]:  # '+' shouldn't appear after '='
+            break
 
     output = decode(generated)
-    print(f"🤖 GPT-77k says:\n{output}\n")
+    print(f"🤖 GPT-77k says: {output}\n")
