@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 from model import GPT558k
+from tqdm import tqdm
 import json
 
 # ─────────────────────────────────────────────
@@ -46,7 +47,7 @@ Y = torch.tensor(Y, dtype=torch.long)
 
 # ─────────────────────────────────────────────
 # 🧺 DataLoader
-BATCH_SIZE = min(512, len(X))  # auto-adjust if dataset is small
+BATCH_SIZE = min(512, len(X))
 dataset = TensorDataset(X, Y)
 loader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, pin_memory=True)
 
@@ -59,7 +60,7 @@ optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
 best_loss = float('inf')
 SAVE_DELTA = 0.01
 LOSS_THRESHOLD = 0.0
-MAX_STEPS = 1000
+MAX_STEPS = 1
 MODEL_PATH = "gpt558k.pt"
 META_PATH = "gpt558k-meta.json"
 
@@ -69,7 +70,10 @@ for step in range(MAX_STEPS):
     total_loss = 0
     num_batches = 0
 
-    for batch_x, batch_y in loader:
+    # 🌟 Live progress bar
+    progress_bar = tqdm(loader, desc=f"Epoch {step}", leave=False)
+
+    for batch_x, batch_y in progress_bar:
         batch_x = batch_x.to(device)
         batch_y = batch_y.to(device)
 
@@ -83,8 +87,11 @@ for step in range(MAX_STEPS):
         total_loss += loss.item()
         num_batches += 1
 
+        avg_loss = total_loss / num_batches
+        progress_bar.set_postfix(loss=f"{avg_loss:.4f}")
+
     epoch_loss = total_loss / num_batches
-    print(f"Step {step}: loss = {epoch_loss:.4f}")
+    print(f"✅ Epoch {step} complete: loss = {epoch_loss:.4f}")
 
     if epoch_loss < best_loss - SAVE_DELTA:
         best_loss = epoch_loss
